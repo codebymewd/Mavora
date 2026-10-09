@@ -6,3 +6,4 @@ export const firebaseConfig = {
   messagingSenderId: "75477289236",
   appId: "1:75477289236:web:91a2274f9d6bb50bc45a01"
 };
+export const cloudinary = { cloudName: "qkhyms14", uploadPreset: "pic_by_mav"};
