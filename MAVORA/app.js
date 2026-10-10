@@ -1,4 +1,4 @@
-import * as CFG from "./firebase-config.js";
+import * as CFG from "mavora/firebase-config.js";
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getAuth,onAuthStateChanged,createUserWithEmailAndPassword,signInWithEmailAndPassword,signInWithPopup,GoogleAuthProvider,sendPasswordResetEmail,signOut,updateProfile} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {getFirestore,doc,getDoc,setDoc,updateDoc,deleteDoc,addDoc,writeBatch,serverTimestamp,collection,query,where,orderBy,limit,getDocs,onSnapshot,increment} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
