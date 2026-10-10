@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function isSeller() { return signedIn() && exists(/databases/$(db)/documents/sellerProfiles/$(request.auth.uid)); }
+    function sp(d) {
+      return d.get('address','').size() <= 200 && d.get('phone','').size() <= 20
+        && d.get('landmark','').size() <= 100 && d.get('pickupInstructions','').size() <= 300;
+    }
+    function otherOf(d) { return d.participants[0] == request.auth.uid ? d.participants[1] : d.participants[0]; }
+    function unr(d, u) { return d.get('unread', {}).get(u, 0); }
+    function okListing(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 100
+        && d.description is string && d.description.size() <= 2000
+        && d.category is string && d.location is string && d.location.size() <= 80
+        && d.price is number && d.price >= 0
+        && d.images is list && d.images.size() <= 4
+        && d.status in ['ACTIVE','PAUSED']
+        && (!('negotiable' in d) || d.negotiable is bool)
+        && (!('colors' in d) || (d.colors is list && d.colors.size() <= 8));
+    }
+
+    match /users/{uid} {
+      allow read: if own(uid) || isAdmin();
+      allow create: if own(uid) && request.resource.data.uid == uid
+        && request.resource.data.role == 'BUYER' && request.resource.data.accountStatus == 'ACTIVE';
+      allow update: if own(uid) && request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['fullName','phone','city','photoURL','theme','updatedAt'])
+        && request.resource.data.fullName.size() <= 80
+        && request.resource.data.theme in ['light','dark','system']
+        && request.resource.data.get('phone','').size() <= 20 && request.resource.data.get('city','').size() <= 60;
+      allow update: if isAdmin();
+    }
+
+    // Public seller facts. Verification fields can only be changed by an admin.
+    match /sellerProfiles/{uid} {
+      allow read: if true;
+      allow create: if own(uid) && request.resource.data.uid == uid
+        && request.resource.data.identityStatus == 'NOT_STARTED'
+        && request.resource.data.shopVerificationStatus == 'NOT_VERIFIED'
+        && request.resource.data.businessName.size() <= 80;
+      allow update: if own(uid) && request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['businessName','description','location','updatedAt'])
+        && request.resource.data.businessName.size() <= 80
+        && request.resource.data.get('description','').size() <= 400 && request.resource.data.get('location','').size() <= 80;
+      allow update: if isAdmin();
+    }
+
+    // Private: pickup address, phone, later bank details. Owner and admin only.
+    match /sellerPrivate/{uid} {
+      allow read: if own(uid) || isAdmin();
+      allow create: if own(uid) && request.resource.data.uid == uid && sp(request.resource.data);
+      allow update: if own(uid) && sp(request.resource.data);
+    }
+
+    match /products/{id} {
+      allow read: if resource.data.status == 'ACTIVE' || own(resource.data.sellerId) || isAdmin();
+      allow create: if isSeller() && request.resource.data.sellerId == request.auth.uid
+        && okListing(request.resource.data) && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.stock is int && request.resource.data.stock >= 0
+        && request.resource.data.condition in ['New','Used','Refurbished'];
+      allow update: if (own(resource.data.sellerId) && request.resource.data.sellerId == resource.data.sellerId
+        && okListing(request.resource.data)) || isAdmin();
+      allow delete: if own(resource.data.sellerId) || isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if resource.data.status == 'ACTIVE' || own(resource.data.sellerId) || isAdmin();
+      allow create: if isSeller() && request.resource.data.sellerId == request.auth.uid
+        && okListing(request.resource.data) && request.resource.data.status == 'ACTIVE'
+        && request.resource.data.priceType in ['FIXED','FROM','CONTACT'];
+      allow update: if (own(resource.data.sellerId) && request.resource.data.sellerId == resource.data.sellerId
+        && okListing(request.resource.data)) || isAdmin();
+      allow delete: if own(resource.data.sellerId) || isAdmin();
+    }
+
+    // Chat between buyers and sellers/service providers. Only the two participants can read or write.
+    match /conversations/{cid} {
+      allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.participants);
+      allow list: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if signedIn() && request.resource.data.participants.size() == 2
+        && request.resource.data.participants[0] == request.auth.uid
+        && request.resource.data.participants[1] != request.auth.uid
+        && exists(/databases/$(db)/documents/sellerProfiles/$(request.resource.data.participants[1]));
+      allow update: if signedIn() && request.auth.uid in resource.data.participants
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage','lastAt','lastSender','unread'])
+        && request.resource.data.lastMessage.size() <= 120
+        && (request.resource.data.lastSender == resource.data.lastSender || request.resource.data.lastSender == request.auth.uid)
+        // my own unread counter may only be reset to 0 (or left alone)
+        && (unr(request.resource.data, request.auth.uid) == 0 || unr(request.resource.data, request.auth.uid) == unr(resource.data, request.auth.uid))
+        // the other person's counter may only stay the same or go up by 1
+        && unr(request.resource.data, otherOf(resource.data)) >= unr(resource.data, otherOf(resource.data))
+        && unr(request.resource.data, otherOf(resource.data)) <= unr(resource.data, otherOf(resource.data)) + 1;
+      match /messages/{mid} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(db)/documents/conversations/$(cid)).data.participants;
+        allow create: if signedIn() && request.auth.uid in get(/databases/$(db)/documents/conversations/$(cid)).data.participants
+          && request.resource.data.keys().hasOnly(['senderId','text','createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+      }
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
