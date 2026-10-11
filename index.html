@@ -95,13 +95,23 @@ footer{margin-top:44px;border-top:1px solid var(--bd);background:var(--sf)}
 .av{width:76px;height:76px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:30px;font-weight:700;overflow:hidden;flex:none}.av img{width:100%;height:100%;object-fit:cover}
 a.cd{display:block;text-decoration:none;color:inherit}.nm{font-weight:500}.tag{font-size:12px;font-weight:600;padding:3px 9px;border-radius:20px;border:1px solid var(--bd)}
 button:disabled{opacity:.6;cursor:wait}
+
+.logo{flex:none;padding:2px 0;min-width:0}.logo svg{flex:none;overflow:visible}.hd{padding-left:max(0px,env(safe-area-inset-left));padding-right:max(0px,env(safe-area-inset-right))}
+.sb input{padding:13px 14px;font-size:16px}.sb button{padding:12px 18px}
+.hero.compact{padding:16px 0 14px}.hero.compact h1{font-size:clamp(26px,7vw,40px)}.hero.compact p{margin:8px 0 12px;font-size:15px}.acts{flex-wrap:nowrap;gap:8px}.acts .btn{flex:1 1 0;min-width:0;text-align:center;padding:10px 6px;font-size:14px;line-height:1.25}
+.cat{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:68px;overflow-wrap:anywhere;text-decoration:none;color:inherit}
+.seg{display:flex;gap:4px;background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:4px;margin-top:16px}.seg a{flex:1;text-align:center;padding:10px 6px;border-radius:9px;text-decoration:none;font-weight:600;color:var(--mu)}.seg a.on{background:var(--ac);color:#1b1204}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}.chips button{flex:none;border-radius:20px;padding:7px 14px;font-size:13px;white-space:nowrap}
+.ck{display:flex;gap:8px;align-items:center;color:var(--tx);margin-top:12px}.ck input{width:auto}
+.li{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 2px;border:0;border-top:1px solid var(--bd);border-radius:0;background:none;color:var(--tx);text-decoration:none;text-align:left;cursor:pointer;font:inherit}.li.soon{color:var(--mu);cursor:default}.li i{font-style:normal;font-size:11px;border:1px solid var(--bd);border-radius:10px;padding:1px 8px}.li b{color:var(--mu)}.lt{padding:12px 2px 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mu)}
+.mf textarea{flex:1;resize:none;max-height:140px;min-width:0}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="mk" viewBox="0 0 90.0 100.0"><path fill="var(--lg)" fill-rule="evenodd" d="M2.4 0.0 1.0 0.2 0.0 1.6 0.0 98.6 1.4 99.8 3.5 99.0 20.4 83.9 21.0 82.7 20.8 68.0 23.8 59.9 28.1 54.2 43.6 39.3 43.4 37.7 26.1 21.0Z"/><path fill="#fc9e28" fill-rule="evenodd" d="M46.6 54.4 39.5 55.0 34.6 58.0 30.3 63.1 28.3 70.5 28.7 73.9 31.0 80.0 40.9 94.1 45.0 98.2 48.1 95.3 57.2 82.9 60.5 77.0 61.7 72.3 60.7 64.8 58.0 60.3 52.1 55.6ZM44.4 61.7 47.7 62.1 50.9 63.7 53.2 66.4 54.2 69.4 53.8 73.1 52.3 76.0 49.5 78.4 46.4 79.6 42.6 79.2 39.1 77.2 37.1 75.0 35.8 70.7 37.5 65.4 40.5 62.9ZM87.4 0.0 83.5 2.8 47.3 36.7 46.2 38.7 63.9 56.2 66.4 60.1 68.8 66.4 68.6 82.1 69.2 83.9 86.4 99.4 88.2 100.0 90.0 98.2 90.0 2.2 89.2 0.4Z"/></symbol></svg>
 <header><div class="w hd">
 <a class="logo" href="#/" aria-label="Mavora home"><svg viewBox="0 0 90.0 100.0"><use href="#mk"/></svg><b>Mavora</b></a>
-<form class="sb" id="sf"><input name="q" placeholder="Search products, services, shops or sellers..." aria-label="Search"><button class="pr">Search</button></form>
-<button class="ib" id="ins" aria-label="Install app" title="Install app"></button>
-<nav class="bn" id="bn" aria-label="Main"><a id="nh" href="#/" title="Home"></a><a id="nm" href="#/messages" title="Messages"></a><a id="ns" href="#/support" title="Help &amp; support"></a><a id="nst" href="#/settings" title="Settings"></a><a id="au" href="#/account" title="Account"></a></nav></div></header>
+<form class="sb" id="sf"><input name="q" placeholder="Search products, services, shops or sellers" aria-label="Search"><button class="pr">Search</button></form>
+<button class="ib" id="ins" aria-label="Install app" title="Install app" hidden></button>
+<nav class="bn" id="bn" aria-label="Main"><a id="nh" href="#/" title="Home"></a><a id="nm" href="#/messages" title="Messages"></a><a id="ns" href="#/support" title="Help &amp; support"></a><a id="nc" href="#/cart" title="Cart"></a><a id="au" href="#/account" title="Account"></a></nav></div></header>
 <main class="w" id="app"></main>
 <div id="md"><div class="pan" role="dialog" aria-modal="true" id="mb"></div></div><div id="ts"></div>
 <footer><div class="w ft"><svg viewBox="0 0 90.0 100.0"><use href="#mk"/></svg> <b style="font-size:20px;color:var(--lg);vertical-align:6px">Mavora</b> <span class="mu" style="vertical-align:5px">· Buy. Sell. Find Services.</span>
