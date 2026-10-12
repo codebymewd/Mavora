@@ -8,3 +8,4 @@ export const firebaseConfig = {
 };
 export const cloudinary = { cloudName: "qkhyms14", uploadPreset: "pic_by_mav"};
 export const supportEmail = "codebymewd@gmail.com";
+export const apiBase = "https://mavora.codebymewd.workers.dev";
