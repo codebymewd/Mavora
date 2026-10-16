@@ -108,17 +108,59 @@ button:disabled{opacity:.6;cursor:wait}
 .er{color:var(--er);border-color:var(--er)!important}.ord{display:block;text-decoration:none;color:inherit;margin-top:10px}
 .vb{border-color:var(--ac)}
 #nbell{background:transparent;color:#fff;border-color:#ffffff33;position:relative;margin-left:auto}#nbell .bdg{left:auto;right:-5px;top:-5px}#ins{margin-left:0}.nt{padding:12px 4px;border-bottom:1px solid var(--bd)}.nt.unread{border-left:4px solid var(--ac);padding-left:10px}.nt:last-child{border-bottom:0}
+.stars{display:flex;gap:2px;margin:6px 0}.stars button{font-size:30px;background:none;border:0;color:var(--ac);padding:2px 6px;line-height:1}.lk{background:none;border:0;color:var(--mu);text-decoration:underline;padding:10px 0;cursor:pointer;font:inherit;font-size:13px}
+
+/* ---- no sideways scrolling on any screen ---- */
+html{overflow-x:hidden;max-width:100%}body{overflow-x:clip;max-width:100%}
+img,svg,video,canvas,iframe{max-width:100%}
+.w,main,header,footer,.pan,.cd,.cb,.rt,.rw,.row>*,.g>*,.two>*,.sd>*,.fg>*,.cats>*,.hd>*{min-width:0}
+.pan,.cb,.tags span,.mb,h1,h2,h3,p,.nm,.mu,.pz,.li span,label{overflow-wrap:anywhere}
+pre,code{white-space:pre-wrap;overflow-wrap:anywhere}
+#md .pan{max-width:min(420px,100%)}
+body.sheet{overflow:hidden}.fo{display:none!important}
+/* ---- search + compact filter button ---- */
+.sb{gap:6px;align-items:stretch}.sb input{border-radius:8px;min-width:0}.sb button{border-radius:8px;margin:0}
+.fbtn{flex:none;width:46px;padding:0;display:inline-grid;place-items:center;background:var(--sf);color:var(--tx);border:1px solid var(--bd)}.fbtn[hidden]{display:none}
+.sbtn{flex:none;min-width:46px;padding:0 16px;display:inline-flex;gap:6px;align-items:center;justify-content:center}.sbtn svg{display:none}
+@media(max-width:759px){.sbtn{width:46px;min-width:46px;padding:0}.sbtn .st{display:none}.sbtn svg{display:block}}
+/* ---- filter bottom sheet (phones) / sidebar (desktop) ---- */
+.sh{display:flex;flex-direction:column;min-height:0;max-height:inherit}
+.sh-h{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--bd)}.sh-h b{flex:1}
+.sh-b{overflow-y:auto;overflow-x:hidden;padding:4px 16px 14px;flex:1;min-height:0}
+.sh-f{display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--bd);background:var(--bg)}.sh-f button{flex:1;min-height:46px}
+.x{width:40px;height:40px;padding:0;border-radius:50%;font-size:18px;flex:none}
+@media(max-width:759px){
+#fl{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:88vh;max-height:88dvh;z-index:61;background:var(--bg);border-radius:18px 18px 0 0;box-shadow:0 -10px 30px #0008;padding:0;display:flex!important;flex-direction:column;transform:translateY(105%);transition:transform .22s ease;visibility:hidden;overflow:hidden}
+#fl.open{transform:none;visibility:visible}
+#fbk{position:fixed;inset:0;background:#0009;z-index:60}#fbk[hidden]{display:none}
+}
+@media(min-width:760px){.sh-h{display:none}.sh-f{padding:12px 0}.sh-b{padding:0;overflow:visible}#fbk{display:none}}
+#ts{z-index:80}
+.row-l{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;text-align:left;padding:12px 14px;margin-top:10px;background:var(--sf);border:1px solid var(--bd);border-radius:10px;min-height:56px}.row-l:disabled{opacity:.5}
+.opt{display:flex;width:100%;gap:12px;align-items:center;text-align:left;padding:14px 4px;border:0;border-bottom:1px solid var(--bd);border-radius:0;background:none;min-height:48px;color:var(--tx)}.opt.sel{font-weight:700}
+.opt i,.sub i{flex:none;width:18px;height:18px;border:2px solid var(--mu);border-radius:50%}.opt.sel i,.sub.sel i{border-color:var(--ac);background:radial-gradient(var(--ac) 45%,transparent 50%)}
+/* ---- service categories accordion ---- */
+.acc{background:var(--sf);border:1px solid var(--bd);border-radius:10px;margin-top:8px;overflow:hidden}
+.acc summary{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px;cursor:pointer;font-weight:600;list-style:none;min-height:50px}.acc summary::-webkit-details-marker{display:none}.acc summary b{color:var(--mu);transition:transform .15s}.acc[open] summary b{transform:rotate(90deg)}
+.subl{padding:0 10px 8px}.sub{display:flex;gap:12px;align-items:center;padding:12px 6px;text-decoration:none;color:inherit;border-top:1px solid var(--bd);min-height:46px}.sub.sel{font-weight:700}
+/* ---- misc ---- */
+.dng{background:#b93a2b;color:#fff;border-color:#b93a2b;font-weight:700}.dng:disabled{opacity:.5}
+.legal h3{margin-top:18px}.legal p{margin:8px 0}
+.cn{position:sticky;top:0;z-index:15;background:#b7791f;color:#fff;text-align:center;font-size:13px;padding:6px 12px}.cn[hidden]{display:none}
 </style></head><body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="mk" viewBox="0 0 90.0 100.0"><path fill="var(--lg)" fill-rule="evenodd" d="M2.4 0.0 1.0 0.2 0.0 1.6 0.0 98.6 1.4 99.8 3.5 99.0 20.4 83.9 21.0 82.7 20.8 68.0 23.8 59.9 28.1 54.2 43.6 39.3 43.4 37.7 26.1 21.0Z"/><path fill="#fc9e28" fill-rule="evenodd" d="M46.6 54.4 39.5 55.0 34.6 58.0 30.3 63.1 28.3 70.5 28.7 73.9 31.0 80.0 40.9 94.1 45.0 98.2 48.1 95.3 57.2 82.9 60.5 77.0 61.7 72.3 60.7 64.8 58.0 60.3 52.1 55.6ZM44.4 61.7 47.7 62.1 50.9 63.7 53.2 66.4 54.2 69.4 53.8 73.1 52.3 76.0 49.5 78.4 46.4 79.6 42.6 79.2 39.1 77.2 37.1 75.0 35.8 70.7 37.5 65.4 40.5 62.9ZM87.4 0.0 83.5 2.8 47.3 36.7 46.2 38.7 63.9 56.2 66.4 60.1 68.8 66.4 68.6 82.1 69.2 83.9 86.4 99.4 88.2 100.0 90.0 98.2 90.0 2.2 89.2 0.4Z"/></symbol></svg>
 <header><div class="w hd">
 <a class="logo" href="#/" aria-label="Mavora home"><svg viewBox="0 0 90.0 100.0"><use href="#mk"/></svg><b>Mavora</b></a>
-<form class="sb" id="sf"><input name="q" placeholder="Search products, services, shops or sellers" aria-label="Search"><button class="pr">Search</button></form>
+<form class="sb" id="sf"><input name="q" placeholder="Search products, services, shops or sellers" aria-label="Search" autocomplete="off"><button type="button" class="fbtn" id="sfb" aria-label="Filters" title="Filters" hidden></button><button class="pr sbtn" id="sbtn" aria-label="Search"><span class="st">Search</span></button></form>
 <a class="btn ib" id="nbell" href="#/notifications" aria-label="Notifications" title="Notifications" hidden></a>
 <button class="ib" id="ins" aria-label="Install app" title="Install app" hidden></button>
 <nav class="bn" id="bn" aria-label="Main"><a id="nh" href="#/" title="Home"></a><a id="nm" href="#/messages" title="Messages"></a><a id="ns" href="#/support" title="Help &amp; support"></a><a id="nc" href="#/cart" title="Cart"></a><a id="au" href="#/account" title="Account"></a></nav></div></header>
+<div id="cn" class="cn" hidden>You are offline or reconnecting. You can keep browsing; changes will sync when your connection returns.</div>
 <main class="w" id="app"></main>
+<div id="fbk" hidden></div>
 <div id="md"><div class="pan" role="dialog" aria-modal="true" id="mb"></div></div><div id="ts"></div>
 <footer><div class="w ft"><svg viewBox="0 0 90.0 100.0"><use href="#mk"/></svg> <b style="font-size:20px;color:var(--lg);vertical-align:6px">Mavora</b> <span class="mu" style="vertical-align:5px">· Buy. Sell. Find Services.</span>
+<div style="margin-top:12px;font-size:13px"><a href="#/terms">Terms &amp; Conditions</a> · <a href="#/privacy">Privacy Policy</a> · <a href="#/support">Help</a></div>
 <div class="cbm">Developed by <i>CBM</i> Code By Me (CBM)<a href="https://codebymewd.pages.dev/about" target="_blank" rel="noopener">About Developer</a><a href="https://codebymewd.pages.dev/contact" target="_blank" rel="noopener">Contact Developer</a></div></div></footer>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 <script type="module" src="app.js"></script></body></html>
