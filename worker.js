@@ -62,6 +62,7 @@ const REQ = { updateTransforms: [{ fieldPath: "createdAt", setToServerValue: "RE
 const stock = (env, path, n) => ({ transform: { document: `${base(env)}/${path}`, fieldTransforms: [{ fieldPath: "stock", increment: { integerValue: String(n) } }] } });
 const price = p => p.discountPrice > 0 && p.discountPrice < p.price ? p.discountPrice : p.price;
 const str = (v, min, max, name) => { v = typeof v === "string" ? v.trim() : ""; if (v.length < min || v.length > max) fail(`Please check ${name}.`); return v; };
+const notificationWrite = (env, uid, title, body, link, type = "order") => ({ update: { name: `${base(env)}/users/${uid}/notifications/${crypto.randomUUID()}`, fields: toF({ type, title, body, link, read: false }) }, updateTransforms: [{ fieldPath: "createdAt", setToServerValue: "REQUEST_TIME" }], currentDocument: { exists: false } });
 
 /* ---- POST /api/orders : checkout ---- */
 async function createOrders(req, env, user) {
@@ -94,6 +95,8 @@ async function createOrders(req, env, user) {
     for (const [sellerId, g] of Object.entries(groups)) {
       n++; const id = `MAV-${year}-${String(n).padStart(6, "0")}`, total = g.items.reduce((a, x) => a + x.price * x.qty, 0);
       writes.push({ update: { name: `${base(env)}/orders/${id}`, fields: toF({ orderNumber: id, buyerId: user.sub, buyerName: delivery.name, sellerId, sellerName: g.sellerName || "Seller", items: g.items, subtotal: total, total, status: "Pending", payment: "Pay the seller directly", delivery, history: [{ status: "Pending", at: new Date() }] }) }, currentDocument: { exists: false }, ...REQ });
+      writes.push(notificationWrite(env, user.sub, "Order placed", `Your order ${id} has been placed successfully.`, `#/order/${id}`));
+      writes.push(notificationWrite(env, sellerId, "New order received", `You received a new order ${id}.`, `#/order/${id}`));
       out.push({ id, sellerName: g.sellerName, total });
     }
     Object.entries(need).forEach(([pid, q]) => writes.push(stock(env, "products/" + pid, -q)));
@@ -115,6 +118,8 @@ async function setStatus(req, env, user, id) {
     if (!role) fail("Not allowed.", 403);
     if (!((role === "seller" ? NEXT_S : NEXT_B)[o.status] || []).includes(status)) fail("That status change is not allowed right now.");
     const writes = [{ update: { name: od.name, fields: toF({ status, history: [...(o.history || []).map(h => ({ status: h.status, at: new Date(h.at) })), { status, at: new Date() }] }) }, updateMask: { fieldPaths: ["status", "history"] }, updateTransforms: [{ fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" }], currentDocument: { updateTime: od.updateTime } }];
+    const recipient = role === "seller" ? o.buyerId : o.sellerId;
+    writes.push(notificationWrite(env, recipient, `Order ${status.toLowerCase()}`, `Order ${id} is now ${status}.`, `#/order/${id}`));
     if (status === "Cancelled") { // give the stock back (only for products that still exist)
       const need = {}; o.items.forEach(i => need[i.productId] = (need[i.productId] || 0) + i.qty);
       const ps = await getDocs(env, t, Object.keys(need).map(p => "products/" + p));
