@@ -1,0 +1,59 @@
+# Mavora, Phase 1 + 2 (real build)
+
+Static site for Cloudflare Pages + your Mavora Firebase project.
+
+## Setup
+1. Firebase Console: create project, enable **Authentication** (Email/Password + Google) and **Firestore**.
+2. Add a Web app, paste its config into `firebase-config.js`.
+3. Auth > Settings > Authorized domains: add your Pages domain (and `localhost`).
+4. Deploy rules/indexes: `firebase deploy --only firestore` (uses `firestore.rules`, `firestore.indexes.json`).
+5. Push this folder to Cloudflare Pages (no build step; output dir `/`). HTTPS is required for PWA install.
+6. First admin: set the custom claim `admin: true` on your uid with the Firebase Admin SDK (never from the browser).
+
+## Built now
+Email + Google sign-in, password reset, buyer profile, seller onboarding (shop / no-shop pickup location, private data split from public profile), Light/Dark/System theme saved to your Firestore profile, PWA (manifest, icons, service worker, offline page, install button), CBM footer hidden in installed app, Firestore rules.
+
+## Not built yet (next phases)
+Listings, search/filters, cart/orders, service requests, reviews, reports, verification (Dojah), plans, promotions, admin dashboard, integrations centre + Cloudflare Worker for secrets, Rate Mavora feedback. Nothing here pretends to do these.
+
+## Notes
+- Service worker caches only the static shell; account data, orders and Firebase traffic are never cached.
+- Cloudinary uploads and all provider keys must go through a Worker (Phase 7), not this frontend.
+- Bump `V` in `sw.js` on each release to push updates.
+
+## Phase 2 additions (setup)
+1. **Republish rules**: Firebase Console > Firestore > Rules > paste the new `firestore.rules` > Publish.
+2. **Indexes**: the first time the homepage loads, the browser console may print a link for a missing index (products/services by status + date). Click it, press Create index, wait ~1-2 minutes. (`firestore.indexes.json` lists both.)
+3. **Photos (optional)**: create a free Cloudinary account, then Settings > Upload > Add upload preset > set Signing mode to **Unsigned**. Add to the bottom of `firebase-config.js`:
+   `export const cloudinary = { cloudName: "YOUR_CLOUD_NAME", uploadPreset: "YOUR_PRESET" };`
+   (No secret key is used in the browser. Without this, listings publish without photos.)
+4. **Support email (optional)**: add `export const supportEmail = "you@example.com";` to `firebase-config.js`.
+5. Re-upload the folder to Cloudflare Pages, then hard refresh (Ctrl+Shift+R).
+
+Built in Phase 2: seller dashboard, product and service create/edit/pause/delete, categories, global search with filters (mobile drawer), item and seller pages, profile view/edit, help page, icon navigation.
+Search currently filters the newest 100 listings in the browser; server-side search comes when listings grow.
+
+## Phase 2.1 (messaging + listing options)
+- Republish `firestore.rules` (adds the `conversations` collection and colour/negotiable validation).
+- New: bottom navigation on mobile (Home, Messages, Help, Settings, Account), Install button stays in the header; Settings page (theme, install, account); buyer-seller and customer-provider chat (live); colours and Negotiable / Non-negotiable on listings; smaller category tiles.
+- Not built: unread badges and message notifications (need email/push setup).
+
+## Security hardening (see also the step list)
+- `_headers`: security headers + Content-Security-Policy (starts in report-only; switch to enforcing after testing).
+- Inline scripts moved to `theme-init.js` and `app.js` so the CSP can forbid inline script.
+- Optional App Check: add `export const appCheckSiteKey = "YOUR_RECAPTCHA_V3_SITE_KEY";` to firebase-config.js.
+- Unread message badge on the Messages icon (per-user counters on each conversation).
+- Still to build (needs the Cloudflare Worker): Turnstile verification, custom rate limits and lockouts, audit logs, signed uploads, admin endpoints.
+
+## Marketplace modes update
+- Product Mode (`#/products`) and Service Mode (`#/services`) have separate categories, search placeholder, filters and results. "Jobs & Services" is removed from products; services use the Nigerian service categories (grouped).
+- Bottom nav is now Home | Messages | Help | Cart | Account. Settings moved to Account. Cart page has Cart / Wishlist / History.
+- Wishlist is stored per account in Firestore (`users/{uid}/wishlist`); cart and history are kept on the device only.
+- Republish `firestore.rules` (wishlist + provider fields).
+- Not built yet: distance filter, rating filter/ratings (need location + reviews), checkout/payment, My Orders, formal service-request statuses, address/bank pages.
+
+## Phase 3 (orders)
+- Worker lives in `../mavora-worker/worker.js`. It holds all private keys (Firebase service account now; Paystack/Shipbubble keys later). There is no API-key screen in the website.
+- Add to `firebase-config.js`: `export const apiBase = "https://YOUR-WORKER.workers.dev";`
+- Orders are created only by the Worker (price, stock, order number and status rules are enforced server-side). Rules deny all client writes to `orders`.
+- Shop links: sellers pick a link name in Dashboard > Shop settings: `/#/shop/<name>`.

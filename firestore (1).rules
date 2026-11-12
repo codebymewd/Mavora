@@ -1,0 +1,221 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function own(uid) { return signedIn() && request.auth.uid == uid; }
+    function isSeller() { return signedIn() && exists(/databases/$(db)/documents/sellerProfiles/$(request.auth.uid)); }
+    // Owner of a store: legacy stores use the owner's uid as the store id; other stores carry ownerId.
+    function storeOwner(id) {
+      return signedIn() && (request.auth.uid == id
+        || get(/databases/$(db)/documents/sellerProfiles/$(id)).data.get('ownerId', '') == request.auth.uid);
+    }
+    function sp(d) {
+      return d.get('address','').size() <= 200 && d.get('phone','').size() <= 20
+        && d.get('landmark','').size() <= 100 && d.get('pickupInstructions','').size() <= 300
+        && (!('bank' in d) || (d.bank.accountNumber.matches('^[0-9]{10}$') && d.bank.bankName.size() <= 60 && d.bank.accountName.size() <= 80));
+    }
+    function otherOf(d) { return d.participants[0] == request.auth.uid ? d.participants[1] : d.participants[0]; }
+    function ra(d, u) { return d.get('readAt', {}).get(u, 0); }
+    function unr(d, u) { return d.get('unread', {}).get(u, 0); }
+    function okListing(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 100
+        && d.description is string && d.description.size() <= 2000
+        && d.category is string && d.location is string && d.location.size() <= 80
+        && d.price is number && d.price >= 0
+        && d.images is list && d.images.size() <= 10
+        && d.status in ['ACTIVE','PAUSED']
+        && (!('negotiable' in d) || d.negotiable is bool)
+        && (!('colors' in d) || (d.colors is list && d.colors.size() <= 8));
+    }
+
+    match /users/{uid} {
+      allow read: if own(uid) || isAdmin();
+      allow create: if own(uid) && request.resource.data.uid == uid
+        && request.resource.data.role == 'BUYER' && request.resource.data.accountStatus == 'ACTIVE';
+      allow update: if own(uid) && request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['fullName','phone','city','photoURL','theme','updatedAt'])
+        && request.resource.data.fullName.size() <= 80
+        && request.resource.data.theme in ['light','dark','system']
+        && request.resource.data.get('phone','').size() <= 20 && request.resource.data.get('city','').size() <= 60;
+      allow update: if isAdmin();
+    }
+
+    // Public seller facts. Verification fields can only be changed by an admin.
+    match /sellerProfiles/{uid} {
+      allow read: if true;
+      allow create: if false; // created only by the Worker
+      allow update: if (own(uid) || own(resource.data.ownerId)) && resource.data.get('status', 'ACTIVE') == 'ACTIVE'
+        && request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['businessName','description','location','providerType','serviceArea','shopSlug','logo','cover','storeCategory','offers','serviceStates','updatedAt'])
+        && (!('offers' in request.resource.data) || request.resource.data.offers in ['PRODUCTS','SERVICES','BOTH'])
+        && (!('serviceStates' in request.resource.data) || (request.resource.data.serviceStates is list && request.resource.data.serviceStates.size() <= 37))
+        && (!('cover' in request.resource.data) || request.resource.data.cover == '' || request.resource.data.cover.matches('^https://res\\.cloudinary\\.com/.*'))
+        && (!('logo' in request.resource.data) || request.resource.data.logo == '' || request.resource.data.logo.matches('^https://res\\.cloudinary\\.com/.*'))
+        && (!('shopSlug' in request.resource.data) || getAfter(/databases/$(db)/documents/shopSlugs/$(request.resource.data.shopSlug)).data.uid == uid)
+        && request.resource.data.get('serviceArea','').size() <= 120
+        && request.resource.data.businessName.size() <= 80
+        && request.resource.data.get('description','').size() <= 400 && request.resource.data.get('location','').size() <= 80;
+      allow update: if isAdmin();
+    }
+
+    // Private: pickup address, phone, later bank details. Owner and admin only.
+    match /sellerPrivate/{uid} {
+      allow read: if storeOwner(uid) || isAdmin();
+      allow create: if false; // created only by the Worker
+      allow update: if storeOwner(uid) && sp(request.resource.data);
+    }
+
+    match /products/{id} {
+      allow read: if resource.data.status == 'ACTIVE' || own(resource.data.sellerId) || isAdmin() || own(resource.data.ownerId);
+      allow create: if false; // created only by the Worker (server-side validation, Turnstile, rate limit)
+      allow update: if ((own(resource.data.sellerId) || own(resource.data.ownerId)) && resource.data.status in ['ACTIVE','PAUSED'] && request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.get('ownerId', '') == resource.data.get('ownerId', '')
+        && okListing(request.resource.data)) || isAdmin();
+      allow delete: if ((own(resource.data.sellerId) || own(resource.data.ownerId)) && resource.data.status in ['ACTIVE','PAUSED']) || isAdmin();
+    }
+
+    match /services/{id} {
+      allow read: if resource.data.status == 'ACTIVE' || own(resource.data.sellerId) || isAdmin() || own(resource.data.ownerId);
+      allow create: if false; // created only by the Worker
+      allow update: if ((own(resource.data.sellerId) || own(resource.data.ownerId)) && resource.data.status in ['ACTIVE','PAUSED'] && request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.get('ownerId', '') == resource.data.get('ownerId', '')
+        && okListing(request.resource.data)) || isAdmin();
+      allow delete: if ((own(resource.data.sellerId) || own(resource.data.ownerId)) && resource.data.status in ['ACTIVE','PAUSED']) || isAdmin();
+    }
+
+    // Chat between buyers and sellers/service providers. Only the two participants can read or write.
+    match /conversations/{cid} {
+      allow get: if signedIn() && (resource == null || request.auth.uid in resource.data.participants);
+      allow list: if signedIn() && request.auth.uid in resource.data.participants;
+      allow create: if signedIn() && request.auth.token.email_verified == true && request.resource.data.participants.size() == 2
+        && request.resource.data.participants[0] == request.auth.uid
+        && request.resource.data.participants[1] != request.auth.uid
+        && (exists(/databases/$(db)/documents/sellerProfiles/$(request.resource.data.participants[1])) || exists(/databases/$(db)/documents/sellerProfiles/$(request.resource.data.participants[0])));
+      allow update: if signedIn() && request.auth.uid in resource.data.participants
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage','lastAt','lastSender','unread','readAt'])
+        && request.resource.data.lastMessage.size() <= 120
+        && (request.resource.data.lastSender == resource.data.lastSender || request.resource.data.lastSender == request.auth.uid)
+        // my own unread counter may only be reset to 0 (or left alone)
+        && (unr(request.resource.data, request.auth.uid) == 0 || unr(request.resource.data, request.auth.uid) == unr(resource.data, request.auth.uid))
+        // the other person's counter may only stay the same or go up by 1
+        && unr(request.resource.data, otherOf(resource.data)) >= unr(resource.data, otherOf(resource.data))
+        && unr(request.resource.data, otherOf(resource.data)) <= unr(resource.data, otherOf(resource.data)) + 1
+        // only I can set my own 'seen' time, and it must be the real server time
+        && ra(request.resource.data, otherOf(resource.data)) == ra(resource.data, otherOf(resource.data))
+        && (ra(request.resource.data, request.auth.uid) == ra(resource.data, request.auth.uid) || ra(request.resource.data, request.auth.uid) == request.time);
+      match /messages/{mid} {
+        allow read: if signedIn() && request.auth.uid in get(/databases/$(db)/documents/conversations/$(cid)).data.participants;
+        allow create: if signedIn() && request.auth.uid in get(/databases/$(db)/documents/conversations/$(cid)).data.participants
+          && request.auth.token.email_verified == true
+          && request.resource.data.keys().hasOnly(['senderId','text','createdAt','ref'])
+          && (!('ref' in request.resource.data) || (request.resource.data.ref.keys().hasOnly(['kind','id','name'])
+              && request.resource.data.ref.name.size() <= 100 && request.resource.data.ref.kind in ['products','services']))
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+      }
+    }
+
+    // Wishlist: private to the owner (products, services, sellers/providers)
+    match /users/{uid}/wishlist/{key} {
+      allow read, delete: if own(uid);
+      allow create: if own(uid) && request.resource.data.keys().hasOnly(['type','id','name','image','createdAt'])
+        && request.resource.data.type in ['product','service','seller']
+        && request.resource.data.name.size() <= 100 && request.resource.data.image.size() <= 500
+        && request.resource.data.createdAt == request.time;
+    }
+
+    // Orders are created and changed ONLY by the Cloudflare Worker (admin access). Buyer and seller can read their own.
+    match /orders/{id} {
+      allow read: if signedIn() && (own(resource.data.buyerId) || own(resource.data.sellerId) || isAdmin() || own(resource.data.sellerOwnerId));
+      allow write: if false;
+    }
+
+    // Public shop links: one unique name per seller, created once, never edited.
+    match /shopSlugs/{slug} {
+      allow read: if true;
+      allow create: if signedIn() && slug.matches('^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$')
+        && !(slug in ['admin','mavora','api','support','help','shop','orders','cart','account','settings'])
+        && request.resource.data.keys().hasOnly(['uid']) && storeOwner(request.resource.data.uid)
+        && exists(/databases/$(db)/documents/sellerProfiles/$(request.resource.data.uid));
+      allow delete: if storeOwner(resource.data.uid);
+    }
+
+    // Service requests are created and changed ONLY by the Worker. Buyer and provider can read their own.
+    match /serviceRequests/{id} {
+      allow read: if signedIn() && (own(resource.data.buyerId) || own(resource.data.sellerId) || isAdmin() || own(resource.data.sellerOwnerId));
+      allow write: if false;
+    }
+
+    // In-app notifications are written by the Worker. The owner can read them, mark them read, or delete them.
+    match /notifications/{id} {
+      allow read: if signedIn() && own(resource.data.userId);
+      allow update: if signedIn() && own(resource.data.userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        && request.resource.data.read == true;
+      allow delete: if signedIn() && own(resource.data.userId);
+      allow create: if false;
+    }
+
+    // Reviews: public when visible; created only by the Worker after a completed order or job.
+    match /reviews/{id} {
+      allow get: if resource == null || resource.data.status == 'VISIBLE' || isAdmin();
+      allow list: if resource.data.status == 'VISIBLE' || isAdmin();
+      allow write: if false;
+    }
+
+    // Saved delivery addresses: private to the owner.
+    match /users/{uid}/addresses/{aid} {
+      allow read, delete: if own(uid);
+      allow create, update: if own(uid) && request.resource.data.keys().hasOnly(['label','name','phone','address','city','state','updatedAt'])
+        && request.resource.data.label.size() <= 30 && request.resource.data.name.size() <= 80 && request.resource.data.phone.size() <= 20
+        && request.resource.data.address.size() <= 200 && request.resource.data.city.size() <= 60 && request.resource.data.state.size() <= 60;
+    }
+
+    // Cart synced to the account (private). Prices are never trusted: the Worker re-checks them at checkout.
+    match /users/{uid}/private/{docId} {
+      allow read, delete: if own(uid);
+      allow create, update: if own(uid) && docId == 'cart' && request.resource.data.keys().hasOnly(['items','updatedAt'])
+        && request.resource.data.items is list && request.resource.data.items.size() <= 30;
+    }
+
+    // Branches of a store (public to read; only the store owner can change them).
+    match /sellerProfiles/{sid}/branches/{bid} {
+      allow read: if true;
+      allow create, update: if storeOwner(sid) && request.resource.data.keys().hasOnly(['name','address','city','state','updatedAt'])
+        && request.resource.data.name.size() <= 80 && request.resource.data.address.size() <= 200
+        && request.resource.data.city.size() <= 60 && request.resource.data.state.size() <= 30;
+      allow delete: if storeOwner(sid);
+    }
+
+    // Support chat: each user has one thread with Mavora support. Admin (custom claim) can read and reply in real time.
+    match /supportThreads/{uid} {
+      allow read: if own(uid) || isAdmin();
+      allow create: if own(uid) && request.auth.token.email_verified == true
+        && request.resource.data.keys().hasOnly(['userId','userName','lastMessage','lastAt','lastFrom','status','unreadAdmin','unreadUser'])
+        && request.resource.data.userId == uid && request.resource.data.lastFrom == 'user'
+        && request.resource.data.lastMessage.size() <= 120 && request.resource.data.userName.size() <= 80;
+      allow update: if (own(uid) && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['userName','lastMessage','lastAt','lastFrom','status','unreadAdmin','unreadUser'])
+          && request.resource.data.lastMessage.size() <= 120) || isAdmin();
+      match /messages/{mid} {
+        allow read: if own(uid) || isAdmin();
+        allow create: if signedIn() && request.resource.data.keys().hasOnly(['from','senderId','text','createdAt'])
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time
+          && ((own(uid) && request.auth.token.email_verified == true && request.resource.data.from == 'user')
+              || (isAdmin() && request.resource.data.from == 'admin'));
+      }
+    }
+
+    // Security events written by the Worker. Only an admin can read them (Firebase console or future dashboard).
+    match /securityLogs/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
