@@ -73,6 +73,7 @@ async function createOrders(req, env, user) {
   });
   const d = b.delivery || {};
   const delivery = { name: str(d.name, 2, 80, "your name"), phone: str(d.phone, 10, 16, "your phone number"), email: str(d.email, 5, 120, "your email"), address: str(d.address, 3, 200, "the address"), state: str(d.state, 2, 60, "the state"), city: str(d.city, 2, 60, "the city"), notes: typeof d.notes === "string" ? d.notes.trim().slice(0, 300) : "" };
+  if (d.latitude !== undefined || d.longitude !== undefined) { if (typeof d.latitude !== "number" || typeof d.longitude !== "number" || !Number.isFinite(d.latitude) || !Number.isFinite(d.longitude) || Math.abs(d.latitude) > 90 || Math.abs(d.longitude) > 180) fail("Please check the delivery location pin."); delivery.latitude = d.latitude; delivery.longitude = d.longitude; if (Number.isFinite(d.locationAccuracy) && d.locationAccuracy >= 0 && d.locationAccuracy <= 100000) delivery.locationAccuracy = Math.round(d.locationAccuracy); }
   if (!/^[0-9+ ]{10,16}$/.test(delivery.phone) || !/^\S+@\S+\.\S+$/.test(delivery.email)) fail("Please check your phone number and email.");
   let out = [];
   await txn(env, async t => {
