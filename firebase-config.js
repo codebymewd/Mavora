@@ -9,4 +9,4 @@ export const firebaseConfig = {
 export const cloudinary = { cloudName: "qkhyms14", uploadPreset: "pic_by_mav"};
 export const supportEmail = "codebymewd@gmail.com";
 // Set this to your deployed Mavora Cloudflare Worker URL to enable checkout and order APIs.
-export const apiBase = "";
+export const apiBase = "https://mavora.codebymewd.workers.dev";
